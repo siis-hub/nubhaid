@@ -1,0 +1,911 @@
+<title>NubHaid</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@800&family=Prompt:wght@400;500;600;800&display=swap">
+<style>
+/* Layout: a dark brown night sky with static stars. Pale mint cards sit on it: a month calendar, a log, and one side panel that swaps between result, setting and form. */
+:root{
+  --brown:#524741; --blush:#fed3dd; --pink:#f2a2bd; --mint:#82bfb7; --card:#f0f9f8;
+  --pink-deep:#e8799f; --pink-ink:#c4506f; --mint-ink:#2f7f74; --sky-grey:#c9cdd9;
+  --bg:#524741; --ink:#524741; --ink-soft:#6e625b; --line:rgba(82,71,65,.35); --on-dark:#f0f9f8;
+  --focus:#d9608a;
+  --font-display:"Poppins","Prompt",system-ui,"Tahoma",sans-serif;
+  --font-num:"Bebas Neue",Impact,"Arial Narrow","Prompt",sans-serif;
+  --font-body:"Prompt","Poppins",system-ui,"Tahoma",sans-serif;
+  --mc:#82bfb7;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--on-dark);font:400 16px/1.55 var(--font-body);-webkit-text-size-adjust:100%;min-height:100vh}
+h1,h2,h3{font-family:var(--font-display);font-weight:800;margin:0;line-height:1.25;text-wrap:balance}
+p{margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.card :focus-visible,.pcard :focus-visible{outline-color:var(--brown)}
+
+/* sky */
+.sky{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.star{position:absolute;width:var(--s);aspect-ratio:1;background:var(--c);clip-path:polygon(50% 0%,62% 36%,98% 36%,69% 58%,80% 93%,50% 72%,20% 93%,31% 58%,2% 36%,38% 36%)}
+.star.l{display:none}
+@media (min-width:900px){.star.m{display:none}.star.l{display:block}}
+
+.app{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding-inline:20px;padding-block:20px 48px;display:grid;gap:18px}
+.top{display:grid;grid-template-columns:1fr auto 1fr;align-items:start;min-height:84px}
+.pillbtn{justify-self:start;border:1.5px solid var(--on-dark);background:transparent;color:var(--on-dark);border-radius:16px;padding:2px 14px;font:800 17px/1.5 var(--font-display);min-height:40px}
+.pillbtn[aria-pressed="true"]{background:var(--on-dark);color:var(--brown)}
+.logo{display:grid;font-size:38px;letter-spacing:.16em;line-height:1.05;text-align:left;padding-top:14px}
+.logo span:first-child{color:var(--blush)}
+.logo span:last-child{color:var(--pink)}
+
+/* layout */
+.layout{display:grid;gap:18px;grid-template-columns:minmax(0,1fr);align-items:start}
+#cal{order:1}#actions{order:2}#sep{order:3}#entries{order:4}#panel{order:5}
+.layout[data-panel="settings"] #panel,.layout[data-panel="form"] #panel{order:0}
+.layout[data-panel="settings"] #cal,.layout[data-panel="settings"] #actions,.layout[data-panel="form"] #cal,.layout[data-panel="form"] #actions{display:none}
+@media (min-width:900px){
+  .app{padding-inline:32px}
+  .top{min-height:150px}
+  .logo{font-size:60px;padding-top:6px}
+  .pillbtn{font-size:20px;padding:4px 16px;margin-top:12px}
+  .layout{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);column-gap:28px;grid-template-rows:auto auto auto 1fr}
+  #cal{grid-column:1;grid-row:1}#actions{grid-column:1;grid-row:2}#sep{grid-column:1;grid-row:3}#entries{grid-column:1;grid-row:4}
+  #panel{grid-column:2;grid-row:1/span 4;order:0}
+  .layout[data-panel] #cal{display:block}
+  .layout[data-panel] #actions{display:flex}
+}
+.card{background:var(--card);color:var(--ink);border-radius:28px;padding:18px 16px;min-width:0}
+.sep{height:6px;background:repeating-linear-gradient(90deg,var(--on-dark) 0 22px,transparent 22px 34px);border-radius:3px;margin-block:4px}
+.actions{display:flex;gap:12px;flex-wrap:wrap}
+.chip{border:0;border-radius:18px;min-height:46px;padding:0 24px;font:800 20px/1 var(--font-display);color:var(--brown)}
+.chip.add{background:var(--card);min-width:150px;text-align:left}
+.chip.today{background:var(--blush);min-width:130px}
+
+/* calendar */
+.cal-head{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:4px}
+.cal-title{text-align:center;min-width:0;container-type:inline-size;overflow:hidden}
+.cal-title h2{font:400 clamp(36px,15cqw,96px)/1 var(--font-num);color:var(--mc);letter-spacing:.01em;white-space:nowrap}
+.cal-title p{font-size:13px;color:var(--ink-soft);margin-top:4px}
+.nav{width:40px;height:40px;border-radius:50%;border:2px solid var(--brown);background:transparent;display:grid;place-items:center;padding:0}
+.nav svg{width:16px;height:16px;stroke:var(--brown);fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.wk,.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.wk{margin-top:12px;text-align:center;font:800 13px/1.8 var(--font-display)}
+.wk span:nth-child(7n+1),.wk span:nth-child(7n+4),.wk span:nth-child(7n){color:var(--brown)}
+.wk span:nth-child(7n+2),.wk span:nth-child(7n+6){color:var(--mint-ink)}
+.wk span:nth-child(7n+3),.wk span:nth-child(7n+5){color:var(--pink-ink)}
+.cal-body{touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.grid{border-top:1.5px solid var(--brown);border-left:1.5px solid var(--brown)}
+.day{border:0;border-right:1.5px solid var(--brown);border-bottom:1.5px solid var(--brown);border-radius:0;background:transparent;color:var(--brown);padding:0;aspect-ratio:1/1.25;display:grid;place-items:center;font:400 clamp(26px,8vw,40px)/1 var(--font-num);position:relative;min-width:0}
+.day.blank{pointer-events:none}
+.day.haid{background:var(--pink)}
+.day.istih{background:var(--mint)}
+.day.prov{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.55) 0 5px,transparent 5px 10px)}
+.day.mixhi{background-image:linear-gradient(to bottom right,var(--pink) 50%,var(--mint) 50%)}
+.day.mixih{background-image:linear-gradient(to bottom right,var(--mint) 50%,var(--pink) 50%)}
+.day.today{box-shadow:inset 0 0 0 3.5px var(--brown)}
+.day.pred::after{content:"";position:absolute;inset:4px;border:2px dashed var(--pink-ink);border-radius:2px}
+@media (min-width:900px){.day{aspect-ratio:1/.85;font-size:clamp(34px,3.6vw,50px)}.wk{font-size:14px}.card{padding:22px 28px}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:12px;font:500 14px/1.4 var(--font-body);justify-content:center}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:20px;height:20px;border-radius:50%;flex:none}
+.legend i.sq{border-radius:3px;width:18px;height:18px}
+
+/* entries */
+.entries h2{font-size:20px;margin-bottom:10px}
+.entries .muted{font-size:14px}
+.elist{display:grid;gap:8px}
+.entry{display:block;width:100%;text-align:left;background:var(--blush);border:0;border-radius:16px;padding:8px 14px;color:var(--brown);font:500 15px/1.4 var(--font-body);min-width:0;overflow-wrap:anywhere}
+
+/* panel */
+.panel{min-width:0}
+.pcard{background:var(--card);color:var(--ink);border-radius:28px;padding:16px;min-width:0;display:grid;gap:14px;align-content:start}
+@media (min-width:900px){.pcard{padding:24px 32px}}
+.pframe{border-radius:34px;padding:12px;display:grid;gap:0}
+.pframe.pink{background:var(--pink)}
+.pframe.mint{background:var(--mint)}
+@media (min-width:900px){.pframe{padding:18px}}
+.phead{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:34px}
+.phead h2{font-size:22px;text-align:right}
+.dots{display:inline-flex;gap:8px}
+.dots i{width:24px;height:24px;border-radius:50%}
+.dots i:first-child{background:var(--pink)}.dots i:last-child{background:var(--mint)}
+@media (min-width:900px){.phead h2{font-size:34px}.dots i{width:44px;height:44px}.dots{gap:16px}}
+.drop{width:.7em;height:.95em;display:inline-block;vertical-align:-.1em;margin-left:6px;fill:var(--pink)}
+.pcard.ftop{border-radius:26px 26px 0 0;border-bottom:2.5px dashed var(--mint)}
+.pcard.fbot{border-radius:0 0 26px 26px}
+
+.muted{color:var(--ink-soft);font-size:14px}
+.stack{display:grid;gap:10px;min-width:0}
+.stack h3{font-size:16px}
+ul.plain{margin:0;padding-left:1.15em;display:grid;gap:6px;font-size:15px}
+.ep{display:grid;gap:12px;padding-bottom:16px;border-bottom:2px dashed var(--line)}
+.ep:last-child{border-bottom:0;padding-bottom:0}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.pill{display:inline-flex;align-items:center;padding:2px 14px;border-radius:999px;font:800 14px/1.6 var(--font-display);background:var(--blush);color:var(--brown)}
+.pill.haid{background:var(--pink)}.pill.istih{background:var(--mint)}.pill.wait{background:var(--blush)}
+.ep h3.head{font-size:18px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.fact{border:1.5px solid var(--brown);border-radius:14px;padding:8px 10px;min-width:0}
+.fact b{display:block;font:800 12px/1.4 var(--font-display);letter-spacing:.04em;text-transform:uppercase}
+.fact span{font:500 15px/1.4 var(--font-body);overflow-wrap:anywhere}
+.note{background:var(--blush);color:var(--brown);border-radius:14px;padding:10px 12px;font-size:14px}
+details{border-top:2px dashed var(--line);padding-top:8px}
+details>summary{cursor:pointer;font:800 15px var(--font-display);min-height:36px;display:flex;align-items:center}
+details[open]>summary{margin-bottom:8px}
+.btn{min-height:46px;padding:0 20px;border-radius:16px;border:0;background:var(--mint);color:var(--brown);font:800 17px/1 var(--font-display)}
+.btn.pinkb{background:var(--blush)}
+.btn.line{background:transparent;border:2px solid var(--brown)}
+.btn.small{min-height:40px;font-size:15px;padding:0 14px}
+
+/* form */
+.field{display:grid;gap:6px;min-width:0}
+.lab{font:800 22px/1.2 var(--font-display)}
+.tl{border-left:5px dotted var(--brown);padding-left:16px;display:grid;gap:14px;margin-left:2px}
+.dt{display:flex;flex-wrap:wrap;gap:4px 20px;align-items:baseline}
+.dt label{position:relative;display:inline-block}
+.dt input{font:400 clamp(24px,7vw,40px)/1.15 var(--font-num);color:var(--brown);background:transparent;border:0;padding:0;margin:0;width:auto;min-width:0;max-width:100%;outline-offset:4px;border-radius:6px}
+.dt input[type=date]{width:7.2em}.dt input[type=time]{width:5.4em}.dt input{field-sizing:content}.dt{gap:4px 14px}
+.dt input:disabled{opacity:.3}
+.dt input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.check{display:flex;gap:12px;align-items:center;min-height:44px;font:600 18px/1.3 var(--font-body)}
+.check input{width:26px;height:26px;accent-color:var(--mint);flex:none}
+.ferr{background:var(--blush);border-radius:12px;padding:8px 12px;font-size:14px}
+input[type=time].t,input[type=number],textarea{width:100%;min-height:44px;border:2px solid var(--brown);border-radius:12px;background:#fff;color:var(--brown);font:inherit;font-size:16px;padding:6px 10px}
+textarea{min-height:80px;resize:vertical}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.seg{display:inline-flex;border:2px solid var(--brown);border-radius:14px;overflow:hidden}
+.seg button{min-height:40px;min-width:56px;padding:0 14px;border:0;background:transparent;font:800 15px var(--font-display)}
+.seg button[aria-pressed="true"]{background:var(--pink)}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--card);color:var(--brown);padding:10px 18px;border-radius:999px;font-weight:600;max-width:calc(100% - 32px)}
+.foot a{color:inherit;text-decoration:underline}
+.foot{font-size:13px;color:var(--on-dark);opacity:.88;display:grid;gap:6px;max-width:780px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<div class="sky" id="sky" aria-hidden="true"></div>
+<div class="app" id="app">
+  <header class="top">
+    <button type="button" class="pillbtn" id="setting-btn" aria-pressed="false" aria-controls="panel">setting</button>
+    <h1 class="logo"><span>Nub</span><span>Haid</span></h1>
+    <span></span>
+  </header>
+  <main class="layout" id="layout" data-panel="result">
+    <section class="card" id="cal" aria-label="Calendar">
+      <div id="calview" class="cal-body"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+    <div class="actions" id="actions">
+      <button type="button" class="chip add" id="add">+ add</button>
+      <button type="button" class="chip today" id="goto-today">today</button>
+    </div>
+    <div class="sep" id="sep" aria-hidden="true"></div>
+    <section class="card entries" id="entries"></section>
+    <section class="panel" id="panel" aria-live="polite"></section>
+  </main>
+  <div class="foot" id="foot"></div>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+<script>
+/* NubHaid engine v4. Haid and istihadah only. Times are minutes since epoch (local wall clock).
+   Rules (from the site owner):
+   - A frame is 15 days from the first blood run that lasts at least 24h. A run under 24h is istihadah. Blood inside the frame is haid.
+   - Clean days inside the frame are pure (pray).
+   - The 15 days after the frame are istihadah. Blood that is still present when those 15 days end starts a new frame.
+   - Blood that returns after 15 full clean days starts a new frame. Under 15 clean days it is istihadah. */
+(function (root) {
+  var D = 1440, FR = 15 * D;
+
+  function parse(iso) {
+    var m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(iso || '');
+    if (!m) return NaN;
+    return Math.round(new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime() / 60000);
+  }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function iso(min) {
+    var d = new Date(min * 60000);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  function dayStart(min) {
+    var d = new Date(min * 60000);
+    return Math.round(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 60000);
+  }
+  function hm(s) { var p = String(s).split(':'); return (+p[0]) * 60 + (+p[1]); }
+
+  function bouts(list, now) {
+    var a = [];
+    list.forEach(function (x) {
+      var s = parse(x.start), e = x.end ? parse(x.end) : now;
+      if (isNaN(s) || isNaN(e)) return;
+      if (e > now) e = now;
+      if (e > s) a.push({ s: s, e: e, open: !x.end });
+    });
+    a.sort(function (p, q) { return p.s - q.s; });
+    var out = [];
+    a.forEach(function (x) {
+      var cur = out[out.length - 1];
+      if (cur && x.s <= cur.e) { cur.e = Math.max(cur.e, x.e); cur.open = cur.open || x.open; }
+      else out.push({ s: x.s, e: x.e, open: x.open });
+    });
+    return out;
+  }
+
+  function analyze(entries, now) {
+    var bs = bouts(entries, now), pieces = [], frames = [], orphans = [], frame = null, lastHaid = null;
+    bs.forEach(function (b) {
+      var t = b.s, gapAt = (lastHaid === null) ? Infinity : lastHaid + FR;
+      if (!frame || b.s < frame.e) gapAt = Infinity; /* blood that starts inside a frame is haid; the clean-days count only applies to blood starting after it */
+      while (t < b.e) {
+        var isNew = false, how = null;
+        if (!frame) { isNew = true; how = 'first'; }
+        else if (t >= frame.w) { isNew = true; how = (t === b.s) ? 'afterWindow' : 'continued'; }
+        else if (t >= frame.e && t >= gapAt) { isNew = true; how = (t === b.s) ? 'gap' : 'gapContinued'; }
+
+        if (isNew) {
+          var len = b.e - t, prov = b.open && len < D;
+          gapAt = Infinity;
+          if (len >= D || prov) {
+            frame = { s: t, e: t + FR, w: t + 2 * FR, how: how, haid: [], istih: [], short: [], pieces: [], ongoing: false, prov: prov };
+            frames.push(frame);
+          } else {
+            var o = { s: t, e: b.e, total: b.e - t };
+            orphans.push(o);
+            pieces.push({ s: t, e: b.e, type: 'istih', orphan: true });
+            t = b.e; continue;
+          }
+        }
+        var pe, p;
+        if (t < frame.e) {
+          pe = Math.min(b.e, frame.e);
+          if (t === b.s && b.e - b.s < D && !b.open && frame.haid.length) {
+            /* a separate run under 24h inside the frame is istihadah */
+            p = { s: t, e: b.e, type: 'istih', short: true };
+            frame.short.push(p); pe = b.e;
+          } else {
+            p = { s: t, e: pe, type: 'haid', prov: frame.prov };
+            frame.haid.push(p); lastHaid = p.e;
+          }
+        } else {
+          pe = Math.min(b.e, frame.w);
+          if (gapAt > t && gapAt < pe) pe = gapAt;
+          p = { s: t, e: pe, type: 'istih' };
+          frame.istih.push(p);
+        }
+        frame.pieces.push(p); pieces.push(p);
+        if (b.open && pe === b.e) frame.ongoing = true;
+        t = pe;
+      }
+    });
+    frames.forEach(function (f) {
+      f.haidMinutes = f.haid.reduce(function (n, p) { return n + (p.e - p.s); }, 0);
+      f.lastHaidEnd = f.haid.length ? f.haid[f.haid.length - 1].e : null;
+      f.lastEnd = f.pieces.length ? f.pieces[f.pieces.length - 1].e : f.s;
+      f.hasGap = f.haid.some(function (p, i) { return i > 0 && p.s > f.haid[i - 1].e; });
+      f.afterIstih = f.istih.filter(function (p) { return p.s >= f.e; });
+      f.key = 'f' + f.s;
+    });
+    return { frames: frames, orphans: orphans, pieces: pieces };
+  }
+
+  var NAMES = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+  function windows(from, to, T) {
+    var f = hm(T.fajr), sr = hm(T.sunrise), dh = hm(T.dhuhr), as = hm(T.asr), mg = hm(T.maghrib), is = hm(T.isha);
+    var out = [];
+    for (var b = dayStart(from) - D; b <= dayStart(to) + D; b += D) {
+      out.push({ n: 'fajr', b: b, s: b + f, e: b + sr });
+      out.push({ n: 'dhuhr', b: b, s: b + dh, e: b + as });
+      out.push({ n: 'asr', b: b, s: b + as, e: b + mg });
+      out.push({ n: 'maghrib', b: b, s: b + mg, e: b + is });
+      out.push({ n: 'isha', b: b, s: b + is, e: b + D + f });
+    }
+    return out;
+  }
+  /* The first prayer owed when haid ends at E (main Shafi'i view): the prayer whose time E falls in,
+     plus the earlier prayer it can be combined with (Dhuhr with Asr, Maghrib with Isha). Between sunrise
+     and Dhuhr the next prayer to come is returned. */
+  function firstPrayer(E, T) {
+    var ws = windows(E, E + 2 * D, T).sort(function (x, y) { return x.s - y.s; });
+    for (var i = 0; i < ws.length; i++) {
+      var w = ws[i];
+      if (E < w.e) {
+        var inW = w.s <= E;
+        if (inW && w.n === 'asr') return { n: 'dhuhr', also: 'asr', start: E, inWindow: true, jam: true };
+        if (inW && w.n === 'isha') return { n: 'maghrib', also: 'isha', start: E, inWindow: true, jam: true };
+        return { n: w.n, also: null, start: Math.max(w.s, E), inWindow: inW, jam: false };
+      }
+    }
+    return null;
+  }
+
+  var api = { D: D, FR: FR, NAMES: NAMES, parse: parse, iso: iso, dayStart: dayStart, analyze: analyze, firstPrayer: firstPrayer, windows: windows };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.Tahara = api;
+})(typeof window !== 'undefined' ? window : this);
+var I18N = {
+th: {
+  tagline: 'สมุดแพลนเนอร์ช่วยนับเฮดและอิสติฮาเดาะฮ์ ตามมัซฮับชาฟิอี',
+  today: 'วันนี้', add: 'บันทึกเลือด', prev: 'เดือนก่อนหน้า', next: 'เดือนถัดไป',
+  lgHaid: 'เฮด', lgIstih: 'อิสติฮาเดาะฮ์ (เลือดเสีย)', lgProv: 'ยังไม่ตัดสิน', lgPred: 'คาดว่าเริ่มรอบหน้า',
+  entriesTitle: 'บันทึกของฉัน',
+  entriesEmpty: 'ยังไม่มีบันทึก กดปุ่ม "บันทึกเลือด" หรือแตะวันที่ในปฏิทิน แล้วใส่วันเวลาที่เลือดเริ่มออกและหยุด',
+  fNew: 'บันทึก', fEdit: 'แก้ไข', fStart: 'เลือดเริ่มออก', fEnd: 'เลือดหยุด',
+  fOngoing: 'ยังมีเลือดออกอยู่', fHelp: 'เลือดที่ออกเป็นช่วงๆ ให้บันทึกเป็นรายการเดียว ตั้งแต่เลือดครั้งแรกถึงครั้งสุดท้าย ถ้าเลือดหยุดไปนานแล้วกลับมาใหม่ ให้เพิ่มเป็นอีกบันทึกหนึ่ง',
+  save: 'บันทึก', cancel: 'ยกเลิก', del: 'ลบบันทึกนี้', delSure: 'กดอีกครั้งเพื่อยืนยันการลบ',
+  eStart: 'ใส่วันเวลาที่เลือดเริ่มออก', eEnd: 'เวลาหยุดต้องหลังเวลาเริ่ม', eEndMissing: 'ใส่วันเวลาที่เลือดหยุด หรือติ๊กว่ายังมีเลือดออกอยู่', eFuture: 'วันเวลาต้องไม่เกินปัจจุบัน',
+  saved: 'บันทึกแล้ว', deleted: 'ลบแล้ว',
+  resTitle: 'ผลการนับ',
+  resEmpty: 'เมื่อมีบันทึก ผลการนับ เหตุผล และสิ่งที่ต้องทำจะแสดงที่นี่',
+  demoBtn: 'ดูตัวอย่างการทำงาน', demoNote: 'ตอนนี้เป็นข้อมูลตัวอย่าง ไม่ใช่ข้อมูลของคุณ', demoClear: 'ล้างตัวอย่าง',
+  demoHint: 'ลองดูก่อนได้ โดยไม่ต้องกรอกข้อมูลของตัวเอง',
+  older: 'รอบก่อนหน้า', cycle: 'รอบ',
+  stHaid: 'นี่คือเฮด', stIstih: 'อิสติฮาเดาะฮ์', stNot: 'ไม่ใช่เฮด', stNow: 'ตอนนี้เป็นเฮด', stNowI: 'ตอนนี้เป็นอิสติฮาเดาะฮ์',
+  hHaid: 'นี่คือเฮด', hHaidMore: 'เฮดช่วงแรก และมีอิสติฮาเดาะฮ์ตามมา', hNot: 'ไม่ใช่เฮด นี่คือเลือดเสีย (อิสติฮาเดาะฮ์)',
+  hNow: 'ตอนนี้เป็นเฮด (เลือดยังออกอยู่)', hNowI: 'ตอนนี้เป็นอิสติฮาเดาะฮ์ (เลือดยังออกอยู่)',
+  fcHaid: 'ช่วงเฮด', fcLen: 'รวมเฮด', fcIstih: 'ช่วงอิสติฮาเดาะฮ์', fcNow: 'ยังมีเลือดอยู่', fcFrame: 'กรอบ 15 วันสิ้นสุด',
+  whyT: 'เหตุผลที่นับแบบนี้', doT: 'สิ่งที่ต้องทำ',
+  rFrame: 'เลือดเริ่มออก {start} จึงนับกรอบ 15 วันถึง {end} เลือดที่ออกในกรอบนี้เป็นเฮด',
+  rByGap: 'เลือดกลับมาหลังสะอาดครบ 15 วันเต็ม จึงนับเป็นเฮดรอบใหม่ และเริ่มกรอบ 15 วันใหม่จากเวลาที่เลือดเริ่มออก',
+  rSwitch: 'เมื่อ {time} เลือดเฮดสิ้นสุด (ครบ 15 วัน) เลือดที่ออกหลังเวลานี้เป็นอิสติฮาเดาะฮ์ ให้อาบน้ำยกฮะดัษและเริ่มละหมาดตั้งแต่เวลานี้',
+  lgMix: 'เปลี่ยนช่วงในวันนั้น', contactT: 'ติดต่อ/แจ้งข้อผิดพลาด',
+  rByGapC: 'เลือดเริ่มออกก่อนสะอาดครบ 15 วัน ช่วงนั้นเป็นอิสติฮาเดาะฮ์ แต่เลือดยังออกต่อเนื่องจนสะอาดครบ 15 วันเต็ม จึงนับเป็นเฮดรอบใหม่ตั้งแต่ {start}',
+  rNext: 'เลือดออกต่อเนื่องจนพ้นช่วงอิสติฮาเดาะฮ์ 15 วันแล้ว จึงเริ่มกรอบเฮดใหม่ตั้งแต่ {start}',
+  rGap: 'เลือดหยุดคั่นกลางในกรอบ 15 วัน ช่วงที่สะอาดให้อาบน้ำยกฮะดัษและละหมาดตามปกติ ส่วนเลือดที่กลับมาในกรอบนี้นับเป็นเฮดอีก',
+  rIstih: 'เลือดที่ออกหลังครบ 15 วันของกรอบ เป็นอิสติฮาเดาะฮ์ ({from} ถึง {to}) และเลือดที่กลับมาก่อนสะอาดครบ 15 วันก็เป็นอิสติฮาเดาะฮ์',
+  rShort: 'เลือดช่วงหนึ่งออกไม่ถึง 24 ชม. ({hours} ชม.) จึงไม่นับเป็นเฮด เป็นอิสติฮาเดาะฮ์',
+  rOrphan: 'เลือดออก {hours} ชม. ไม่ถึง 24 ชม. จึงไม่ใช่เฮด เป็นอิสติฮาเดาะฮ์',
+  rOngoing: 'เลือดยังออกอยู่ ผลจะเปลี่ยนเมื่อเลือดหยุด หรือเมื่อผ่านวันที่ {date}',
+  aGhusl: 'ยกฮะดัษ: เฮดช่วงนี้สิ้นสุด {time} ให้อาบน้ำชำระ',
+  aPray: 'เริ่มละหมาดตั้งแต่ {prayer} วันที่ {date}',
+  aJam: 'เฮดหมดในเวลาอัสรี/อิชาอ์ ต้องละหมาดซุฮ์รี/มัฆริบของวันนั้นด้วย (ละหมาดรวมเวลา ตามทัศนะหลักของมัซฮับ)',
+  aEndsAt: 'ถ้าเลือดยังออกต่อเนื่อง เฮดจะครบ 15 วันเมื่อ {time} ให้อาบน้ำยกฮะดัษ แล้วเริ่มละหมาด{prayer}',
+  fHelp: 'เลือดที่ออกเป็นช่วงๆ ให้บันทึกเป็นรายการเดียว ตั้งแต่เลือดครั้งแรกถึงครั้งสุดท้าย ถ้าเลือดหยุดไปนานแล้วกลับมาใหม่ ให้เพิ่มเป็นอีกบันทึกหนึ่ง', fDate: 'วันที่', fTime: 'เวลา', langT: 'ภาษา',
+  aIstih: 'ช่วงอิสติฮาเดาะฮ์ละหมาดและถือศีลอดได้ ก่อนละหมาดฟัรฎูทุกครั้งให้ล้างเลือด ทำความสะอาดอวัยวะเพศ ปิดด้วยผ้าหรือแผ่นอนามัย ทำวุฎูอ์ แล้วละหมาดทันที',
+  aFast: 'รวมเฮด {d} วัน {h} ชม. ถ้าตรงกับการถือศีลอดบังคับ เช่น รอมฎอน ต้องชดภายหลัง',
+  aNot: 'เลือดนี้ไม่ใช่เฮด ให้ละหมาดและถือศีลอดตามปกติ หากเคยงดไปให้ชดเชย และทำตามวิธีของผู้มีเลือดเสียก่อนละหมาดทุกครั้ง',
+  aNowHaid: 'ตอนนี้ถือเป็นเฮด งดละหมาดและถือศีลอด ถ้าเลือดหยุดภายใน 15 วัน ทั้งหมดนับเป็นเฮด',
+  predT: 'รอบเฉลี่ย {n} วัน คาดว่ารอบหน้าเริ่มประมาณ {date} (เป็นการประมาณ ไม่ใช่ข้อตัดสิน)',
+  copy: 'คัดลอกสรุปไปถามผู้รู้', copied: 'คัดลอกแล้ว', copyFail: 'คัดลอกอัตโนมัติไม่ได้ เลือกข้อความแล้วคัดลอกเอง',
+  sumHead: 'สรุปจาก NubHaid (ใช้ประกอบการสอบถามผู้รู้ ไม่ใช่คำวินิจฉัย)', sumEntries: 'บันทึกเลือด', sumResult: 'ผลที่ระบบคำนวณ',
+  setT: 'ตั้งค่า',
+  prT: 'เวลาละหมาด', prNote: 'ค่าเริ่มต้นเป็นตัวอย่างของกรุงเทพฯ ปรับให้ตรงกับพื้นที่ของคุณเพื่อให้การนับเวลาละหมาดแม่นยำ',
+  fajr: 'ซุบฮิ', sunrise: 'ดวงอาทิตย์ขึ้น', dhuhr: 'ซุฮ์รี', asr: 'อัสรี', maghrib: 'มัฆริบ', isha: 'อิชาอ์',
+  bkT: 'สำรองและย้ายข้อมูล', bkCopy: 'คัดลอกข้อมูลสำรอง', bkPaste: 'วางข้อมูลสำรองที่นี่', bkImport: 'นำเข้า', bkOk: 'นำเข้าแล้ว', bkErr: 'ข้อมูลไม่ถูกต้อง',
+  wipe: 'ลบข้อมูลทั้งหมดในเครื่องนี้', wipeSure: 'กดอีกครั้งเพื่อยืนยัน จะลบทั้งหมดและกู้คืนไม่ได้', wiped: 'ลบข้อมูลแล้ว',
+  rulesT: 'หลักเกณฑ์ที่ระบบใช้ (สำหรับผู้รู้ตรวจ)',
+  rules: [
+    'เลือดที่ออกต้องไม่ต่ำกว่า 24 ชม. (1 วัน 1 คืน) จึงนับเป็นเฮด ไม่จำเป็นต้องไหลตลอดทั้ง 24 ชม. ออกเป็นช่วงๆ ก็นับ ถ้าไม่ถึง 24 ชม. เป็นอิสติฮาเดาะฮ์',
+    'กรอบเฮดนับ 15 วัน จากเวลาที่เลือดที่ครบ 24 ชม. เริ่มออก เลือดในกรอบนี้เป็นเฮด',
+    'วันที่เลือดหยุดคั่นในกรอบ ให้อาบน้ำยกฮะดัษและละหมาดตามปกติ เลือดที่กลับมาในกรอบนับเป็นเฮด',
+    '15 วันหลังกรอบเป็นอิสติฮาเดาะฮ์ ถ้าเลือดยังออกอยู่เมื่อครบช่วงนั้น เริ่มกรอบเฮดใหม่ (เฮด 15 อิสติฮาเดาะฮ์ 15 วนไป)',
+    'เลือดที่กลับมาหลังสะอาดครบ 15 วันเต็ม นับเป็นเฮดรอบใหม่ และเริ่มกรอบจากเวลานั้น ถ้าเลือดเริ่มออกก่อนครบ 15 วันแล้วออกต่อเนื่องจนครบ ช่วงก่อนครบเป็นอิสติฮาเดาะฮ์ ส่วนตั้งแต่ครบ 15 วันเป็นต้นไปเป็นเฮด',
+    'เลือดที่กลับมาก่อนสะอาดครบ 15 วัน (หลังพ้นกรอบ) เป็นอิสติฮาเดาะฮ์ โดยนับ 15 วันจากเวลาที่เลือดเฮดครั้งสุดท้ายหยุด เลือดอิสติฮาเดาะฮ์ที่ออกคั่นไม่ทำให้เริ่มนับใหม่',
+    'นับตามเวลาจริงเป็นชั่วโมงและนาที (24 ชม. = 1,440 นาที)',
+    'เมื่อเฮดสิ้นสุด ให้ละหมาดเวลาที่เฮดสิ้นสุดอยู่ในเวลานั้นเป็นเวลาแรก ถ้าสิ้นสุดในเวลาอัสรี ต้องละหมาดซุฮ์รีด้วย ถ้าในเวลาอิชาอ์ ต้องละหมาดมัฆริบด้วย (ทัศนะหลักของมัซฮับ มีทัศนะรองว่าไม่ต้อง ระบบเลือกทัศนะที่ปลอดภัยกว่า)',
+    'ยังไม่รองรับ: นิฟาส สีเลือด ธรรมเนียมเดิม และอายุต่ำกว่า 9 ปีฮิจเราะฮ์'
+  ],
+  privT: 'ความเป็นส่วนตัว',
+  priv: 'ข้อมูลทั้งหมดถูกคำนวณและเก็บในเบราว์เซอร์ของเครื่องนี้เท่านั้น ไม่มีบัญชีผู้ใช้ และไม่ส่งข้อมูลไปที่เซิร์ฟเวอร์ใด ถ้าล้างข้อมูลเบราว์เซอร์ บันทึกจะหาย ควรสำรองข้อมูลไว้',
+  noStore: 'เบราว์เซอร์นี้ไม่อนุญาตให้บันทึกข้อมูลไว้ (อาจเป็นโหมดส่วนตัว) บันทึกจะหายเมื่อปิดหน้านี้ ใช้ปุ่มสำรองข้อมูลเก็บไว้',
+  disc: 'เครื่องมือนี้ช่วยคำนวณตามหลักเกณฑ์ที่แสดงไว้ ไม่ใช่ฟัตวา กรณีไม่แน่ใจหรือซับซ้อนให้สอบถามผู้รู้',
+  d: 'วัน', h: 'ชม.', am: 'น.'
+},
+en: {
+  tagline: 'A planner that helps count haid and istihadah, following the Shafiʿi school.',
+  today: 'Today', add: 'Log bleeding', prev: 'Previous month', next: 'Next month',
+  lgHaid: 'Haid', lgIstih: 'Istihadah', lgProv: 'Not decided yet', lgPred: 'Next cycle (estimate)',
+  entriesTitle: 'My log',
+  entriesEmpty: 'Nothing logged yet. Tap "Log bleeding" or a date on the calendar, then enter when the blood started and stopped.',
+  fNew: 'Log', fEdit: 'Edit', fStart: 'Blood started', fEnd: 'Blood stopped',
+  fOngoing: 'Still bleeding', fHelp: 'Blood that comes on and off should be logged as one entry, from the first blood to the last. If it stops for a long time and then returns, add the return as another entry.',
+  save: 'Save', cancel: 'Cancel', del: 'Delete this entry', delSure: 'Tap again to confirm delete',
+  eStart: 'Enter when the blood started', eEnd: 'The end must be after the start', eEndMissing: 'Enter when the blood stopped, or tick that you are still bleeding', eFuture: 'Date and time cannot be in the future',
+  saved: 'Saved', deleted: 'Deleted',
+  resTitle: 'Result',
+  resEmpty: 'Once you log something, the result, the reasoning and what to do next appear here.',
+  demoBtn: 'See a demo', demoNote: 'This is sample data, not yours', demoClear: 'Clear the sample',
+  demoHint: 'Have a look first without entering your own data.',
+  older: 'Earlier cycles', cycle: 'Cycle',
+  stHaid: 'This is haid', stIstih: 'Istihadah', stNot: 'Not haid', stNow: 'Haid right now', stNowI: 'Istihadah right now',
+  hHaid: 'This is haid', hHaidMore: 'The first part is haid, and istihadah follows', hNot: 'This is not haid. It is istihadah (irregular bleeding)',
+  hNow: 'Haid right now (still bleeding)', hNowI: 'Istihadah right now (still bleeding)',
+  fcHaid: 'Haid period', fcLen: 'Haid total', fcIstih: 'Istihadah period', fcNow: 'still bleeding', fcFrame: '15-day frame ends',
+  whyT: 'Why it is counted this way', doT: 'What to do',
+  rFrame: 'Blood started {start}, so a 15-day frame runs to {end}. Blood inside this frame is haid.',
+  rByGap: 'Blood returned after a full 15 clean days, so it is a new haid and a new 15-day frame starts from when it began.',
+  rSwitch: 'At {time} the haid ends (15 days complete). Blood after this time is istihadah. Take ghusl and start praying from this time.',
+  lgMix: 'Changes during the day', contactT: 'Contact / report a problem',
+  rByGapC: 'The blood started before 15 clean days had passed, so that part is istihadah. It kept going until the 15 clean days were complete, so a new haid starts from {start}.',
+  rNext: 'Bleeding continued past the 15 days of istihadah, so a new haid frame starts from {start}.',
+  rGap: 'Blood stopped inside the 15-day frame. During the clean time take ghusl and pray as normal. Blood that returns inside the frame is haid again.',
+  rIstih: 'Blood after the 15 days of the frame is istihadah ({from} to {to}), and so is blood that returns before 15 full clean days.',
+  rShort: 'One bleeding run lasted under 24 hours ({hours} h), so it is not haid. It is istihadah.',
+  rOrphan: 'The bleeding lasted {hours} h, under 24 h, so it is not haid. It is istihadah.',
+  rOngoing: 'Still bleeding. The result changes when the blood stops, or after {date}.',
+  aGhusl: 'Lift the hadath: this haid period ended {time}. Take ghusl.',
+  aPray: 'Start praying from {prayer} on {date}',
+  aJam: 'The haid ended in Asr/Isha time, so Dhuhr/Maghrib of that day is also owed (combined times, the main view of the school).',
+  aEndsAt: 'If the bleeding continues, haid reaches 15 days at {time}. Take ghusl, then start praying {prayer}.',
+  fHelp: 'Blood that comes on and off should be logged as one entry, from the first blood to the last. If it stops for a long time and then returns, add the return as another entry.', fDate: 'Date', fTime: 'Time', langT: 'Language',
+  aIstih: 'During istihadah you pray and fast as usual. Before each obligatory prayer, wash off the blood, clean the private area, cover it with a cloth or pad, make wudu, and pray right away.',
+  aFast: 'Haid total {d} days {h} h. If it fell on obligatory fasting such as Ramadan, make those days up later.',
+  aNot: 'This blood is not haid. Pray and fast as usual, make up anything you left, and follow the istihadah care before each prayer.',
+  aNowHaid: 'Treat this as haid for now: no prayer or fasting. If the blood stops within 15 days, all of it counts as haid.',
+  predT: 'Average cycle {n} days. The next one is expected around {date} (an estimate, not a ruling).',
+  copy: 'Copy summary for a scholar', copied: 'Copied', copyFail: 'Could not copy automatically. Select the text and copy it yourself.',
+  sumHead: 'Summary from NubHaid (to help ask a scholar, not a ruling)', sumEntries: 'Blood log', sumResult: 'Calculated result',
+  setT: 'Settings',
+  prT: 'Prayer times', prNote: 'Defaults are examples for Bangkok. Adjust them to your area so the prayer counting is accurate.',
+  fajr: 'Fajr', sunrise: 'Sunrise', dhuhr: 'Dhuhr', asr: 'Asr', maghrib: 'Maghrib', isha: 'Isha',
+  bkT: 'Backup and move data', bkCopy: 'Copy backup', bkPaste: 'Paste backup here', bkImport: 'Import', bkOk: 'Imported', bkErr: 'Invalid data',
+  wipe: 'Delete all data on this device', wipeSure: 'Tap again to confirm. Everything is deleted and cannot be recovered.', wiped: 'Data deleted',
+  rulesT: 'Rules the tool uses (for scholar review)',
+  rules: [
+    'The bleeding must last at least 24 hours to be haid. It does not have to flow the whole time; on and off counts. Under 24 hours is istihadah.',
+    'The haid frame is 15 days from when the first bleeding of at least 24 hours began. Blood inside the frame is haid.',
+    'Clean days inside the frame: take ghusl and pray as normal. Blood that returns inside the frame is haid.',
+    'The 15 days after the frame are istihadah. If blood is still present when they end, a new frame starts (15 haid, 15 istihadah, repeating).',
+    'Blood that returns after 15 full clean days is a new haid and a new frame starts from then. If the blood starts before the 15 days are complete and keeps flowing, the part before is istihadah and the part from the 15th day on is haid.',
+    'Blood that returns before 15 clean days (after the frame) is istihadah. The 15 days are counted from when the last haid blood stopped; istihadah blood in between does not restart the count.',
+    'Counted in real hours and minutes (24 hours = 1,440 minutes).',
+    'When haid ends, the first prayer is the one whose time it ends in. If it ends in Asr time, Dhuhr is also owed. If in Isha time, Maghrib is also owed (the main view of the school; a minor view says not required. The tool takes the safer view).',
+    'Not supported: nifas, blood colour, past habit, and age under 9 hijri years.'
+  ],
+  privT: 'Privacy',
+  priv: 'Everything is calculated and stored in this browser on this device only. There are no accounts and nothing is sent to any server. Clearing browser data erases your log, so keep a backup.',
+  noStore: 'This browser does not allow saving data (maybe a private window). Your log is lost when you close this page. Use the backup button to keep a copy.',
+  disc: 'This tool calculates from the rules shown. It is not a fatwa. If you are unsure or the case is complex, ask a scholar.',
+  d: 'd', h: 'h', am: ''
+}
+};
+(function () {
+'use strict';
+var T = window.Tahara, D = T.D, KEY = 'tahara.v1';
+var DEF_PRAY = { fajr: '04:50', sunrise: '06:00', dhuhr: '12:10', asr: '15:20', maghrib: '18:00', isha: '19:10' };
+var S = { lang: ((navigator.language || '').indexOf('th') === 0) ? 'th' : 'en', pray: Object.assign({}, DEF_PRAY), entries: [], demo: false };
+var storeOK = true, view = { y: new Date().getFullYear(), m: new Date().getMonth() }, panel = 'result', turning = false, justDragged = false;
+var MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+var DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+var MCOL = ['var(--mint)', 'var(--pink-deep)', 'var(--brown)'];
+
+function $(s, r) { return (r || document).querySelector(s); }
+function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function t(k, p) {
+  var s = I18N[S.lang][k]; if (s == null) s = I18N.en[k]; if (s == null) return k;
+  return String(s).replace(/\{(\w+)\}/g, function (m, n) { return p && p[n] != null ? p[n] : ''; });
+}
+function loc() { return S.lang === 'th' ? 'th-TH' : 'en-GB'; }
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+function nowMin() { return Math.floor(Date.now() / 60000); }
+function fmtDate(m) { return new Intl.DateTimeFormat(loc(), { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(m * 60000)); }
+function fmtTime(m) { var d = new Date(m * 60000); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+function fmtDT(m) { return fmtDate(m) + ' ' + fmtTime(m) + (t('am') ? ' ' + t('am') : ''); }
+function fmtShort(m) { var d = new Date(m * 60000); return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getFullYear() % 100); }
+function fmtDur(min) { var d = Math.floor(min / D), h = Math.round((min - d * D) / 60); if (h === 24) { d++; h = 0; } return d + ' ' + t('d') + ' ' + h + ' ' + t('h'); }
+function num1(x) { return String(Math.round(x * 10) / 10); }
+function toast(msg) {
+  var el = $('#toast'); el.textContent = msg; el.hidden = false;
+  clearTimeout(toast.tm); toast.tm = setTimeout(function () { el.hidden = true; }, 2200);
+}
+
+function load() {
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) {
+      var o = JSON.parse(raw);
+      if (o.lang) S.lang = o.lang;
+      if (o.pray) S.pray = Object.assign(S.pray, o.pray);
+      if (Array.isArray(o.entries)) S.entries = o.entries.filter(function (x) { return x && x.start && x.kind !== 'nifas'; });
+      S.demo = !!o.demo;
+    }
+  } catch (e) { storeOK = false; }
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify({ lang: S.lang, pray: S.pray, entries: S.entries, demo: S.demo })); storeOK = true; } catch (e) { storeOK = false; }
+}
+function analysis() { return T.analyze(S.entries, nowMin()); }
+function predicted(res) {
+  var st = res.frames.filter(function (f) { return f.how !== 'continued' && f.how !== 'afterWindow'; }).map(function (f) { return f.s; });
+  if (st.length < 2) return null;
+  var avg = (st[st.length - 1] - st[0]) / (st.length - 1);
+  return { n: Math.round(avg / D), at: st[st.length - 1] + Math.round(avg) };
+}
+function dayInfo(res, d0) {
+  var info = null, d1 = d0 + D, seq = [];
+  res.pieces.forEach(function (p) {
+    if (p.s < d1 && p.e > d0) {
+      var c = p.type === 'haid' ? 'haid' : 'istih';
+      if (!seq.length || seq[seq.length - 1].c !== c) seq.push({ c: c, prov: !!p.prov });
+      if (c === 'haid') { if (!info || info.cls !== 'haid') info = { cls: 'haid', prov: !!p.prov }; }
+      else if (!info) info = { cls: 'istih', prov: false };
+    }
+  });
+  if (info && seq.length > 1) {
+    var hasH = seq.some(function (x) { return x.c === 'haid'; }), hasI = seq.some(function (x) { return x.c === 'istih'; });
+    if (hasH && hasI) info.mix = seq[0].c === 'haid' ? 'mixhi' : 'mixih';
+  }
+  return info;
+}
+
+/* ---------- sky ---------- */
+function initSky() {
+  var G = '#c9cdd9', P = '#f2a2bd', M = '#82bfb7', W = '#ffffff';
+  var m = [[10, 8, 22, G], [86, 4, 24, P], [76, 17, 22, M], [92, 40, 22, G], [4, 61, 22, P], [90, 86, 20, M], [8, 90, 18, G], [50, 95, 16, P], [2, 28, 16, M]];
+  var l = [[7, 11, 30, G], [27, 4, 30, P], [35, 14, 28, M], [66, 6, 30, G], [94, 9, 28, P], [74, 14, 30, M], [6, 44, 28, M], [3, 60, 30, P], [54, 47, 30, G], [96, 38, 30, W], [93, 70, 30, M], [92, 88, 30, P], [7, 92, 30, W], [48, 83, 30, M], [64, 62, 22, P], [18, 75, 24, G]];
+  var h = '';
+  m.forEach(function (s) { h += '<i class="star m" style="left:' + s[0] + '%;top:' + s[1] + '%;--s:' + s[2] + 'px;--c:' + s[3] + '"></i>'; });
+  l.forEach(function (s) { h += '<i class="star l" style="left:' + s[0] + '%;top:' + s[1] + '%;--s:' + s[2] + 'px;--c:' + s[3] + '"></i>'; });
+  $('#sky').innerHTML = h;
+}
+
+/* ---------- calendar ---------- */
+var SVGL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
+var SVGR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
+var HM_EN = ['Muharram', 'Safar', "Rabi' al-Awwal", "Rabi' al-Thani", 'Jumada al-Ula', 'Jumada al-Akhirah', 'Rajab', "Sha'ban", 'Ramadan', 'Shawwal', "Dhu al-Qi'dah", 'Dhu al-Hijjah'];
+var HM_TH = ['มุฮัรรอม', 'ศอฟัร', 'รอบีอุลเอาวัล', 'รอบีอุษษานี', 'ญุมาดัลอูลา', 'ญุมาดัลอาคิเราะฮฺ', 'รอญับ', 'ชะอฺบาน', 'รอมาฎอน', 'เชาวาล', 'ษุลเกาะอฺดะฮฺ', 'ษุลฮิจญะฮฺ'];
+function hijriParts(d) {
+  var p = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric', month: 'numeric', year: 'numeric' }).formatToParts(d), o = {};
+  p.forEach(function (x) { o[x.type] = parseInt(x.value, 10); });
+  return o;
+}
+function hijri(y, m) {
+  try {
+    var N = S.lang === 'th' ? HM_TH : HM_EN;
+    var A = hijriParts(new Date(y, m, 1)), B = hijriParts(new Date(y, m + 1, 0));
+    var a = N[A.month - 1] + ' ' + A.year, b = N[B.month - 1] + ' ' + B.year;
+    return a === b ? a : a + ' - ' + b;
+  } catch (e) { return ''; }
+}
+function calHTML(y, m) {
+  var res = analysis(), pr = predicted(res), off = new Date(y, m, 1).getDay(), dim = new Date(y, m + 1, 0).getDate();
+  var rows = Math.ceil((off + dim) / 7), td = T.dayStart(nowMin()), usedProv = false, usedPred = false, usedMix = false;
+  var sub = new Intl.DateTimeFormat(S.lang === 'th' ? 'th-TH' : 'en-GB', S.lang === 'th' ? { month: 'long', year: 'numeric' } : { year: 'numeric' }).format(new Date(y, m, 1));
+  var hj = hijri(y, m);
+  var h = '<div class="cal-head"><button type="button" class="nav" data-nav="-1" aria-label="' + esc(t('prev')) + '">' + SVGL + '</button>' +
+    '<div class="cal-title"><h2>' + MONTHS[m] + '</h2><p>' + esc(sub + (hj ? ' · ' + hj : '')) + '</p></div>' +
+    '<button type="button" class="nav" data-nav="1" aria-label="' + esc(t('next')) + '">' + SVGR + '</button></div><div class="wk" aria-hidden="true">';
+  DAYS.forEach(function (d) { h += '<span>' + d + '</span>'; });
+  h += '</div><div class="grid">';
+  for (var c = 0; c < rows * 7; c++) {
+    var dn = c - off + 1;
+    if (dn < 1 || dn > dim) { h += '<div class="day blank" aria-hidden="true"></div>'; continue; }
+    var dt = new Date(y, m, dn), d0 = Math.round(dt.getTime() / 60000);
+    var info = dayInfo(res, d0), cls = 'day';
+    if (d0 === td) cls += ' today';
+    if (info) { cls += ' ' + info.cls; if (info.mix) { cls += ' ' + info.mix; usedMix = true; } else if (info.prov) { cls += ' prov'; usedProv = true; } }
+    if (pr && pr.at >= d0 && pr.at < d0 + D) { cls += ' pred'; usedPred = true; }
+    var lab = new Intl.DateTimeFormat(loc(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(dt);
+    if (info) lab += ', ' + t(info.cls === 'haid' ? 'lgHaid' : 'lgIstih');
+    var iso = y + '-' + pad(m + 1) + '-' + pad(dn);
+    h += '<button type="button" class="' + cls + '" data-day="' + iso + '" aria-label="' + esc(lab) + '">' + dn + '</button>';
+  }
+  h += '</div>';
+  return { html: h, color: MCOL[m % 3], prov: usedProv, pred: usedPred, mix: usedMix };
+}
+function renderCal() {
+  var r = calHTML(view.y, view.m), v = $('#calview');
+  v.innerHTML = r.html; v.style.setProperty('--mc', r.color);
+  var lg = '<span><i style="background:var(--pink)"></i>' + esc(t('lgHaid')) + '</span><span><i style="background:var(--mint)"></i>' + esc(t('lgIstih')) + '</span>';
+  if (r.prov) lg += '<span><i class="sq" style="background:repeating-linear-gradient(135deg,var(--pink) 0 3px,#fff 3px 6px)"></i>' + esc(t('lgProv')) + '</span>';
+  if (r.mix) lg += '<span><i class="sq" style="background:linear-gradient(to bottom right,var(--pink) 50%,var(--mint) 50%)"></i>' + esc(t('lgMix')) + '</span>';
+  if (r.pred) lg += '<span><i class="sq" style="border:2px dashed var(--pink-ink)"></i>' + esc(t('lgPred')) + '</span>';
+  $('#legend').innerHTML = lg;
+}
+function turn(dir) {
+  if (turning) return;
+  var v = $('#calview'), ny = view.y, nm = view.m + dir;
+  if (nm < 0) { nm = 11; ny--; } if (nm > 11) { nm = 0; ny++; }
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce || !v.animate) { view = { y: ny, m: nm }; renderCal(); return; }
+  turning = true;
+  var from = v.style.transform || 'translateX(0px)', fo = v.style.opacity || '1';
+  var out = v.animate([{ transform: from, opacity: fo }, { transform: 'translateX(' + (-dir * 60) + '%)', opacity: 0 }], { duration: 170, easing: 'ease-in' });
+  out.onfinish = function () {
+    v.style.transform = ''; v.style.opacity = '';
+    view = { y: ny, m: nm }; renderCal();
+    var inn = v.animate([{ transform: 'translateX(' + (dir * 60) + '%)', opacity: 0 }, { transform: 'translateX(0)', opacity: 1 }], { duration: 240, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    inn.onfinish = function () { turning = false; };
+  };
+}
+function initSwipe() {
+  var v = $('#calview'), st = null;
+  v.addEventListener('pointerdown', function (e) {
+    if (turning || e.target.closest('.nav') || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    st = { x: e.clientX, y: e.clientY, id: e.pointerId, dx: 0, cap: false };
+  });
+  v.addEventListener('pointermove', function (e) {
+    if (!st || e.pointerId !== st.id) return;
+    var dx = e.clientX - st.x, dy = e.clientY - st.y;
+    if (!st.cap) {
+      if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx)) { st = null; return; }
+      if (Math.abs(dx) < 8) return;
+      st.cap = true; try { v.setPointerCapture(e.pointerId); } catch (x) {}
+    }
+    st.dx = dx;
+    v.style.transform = 'translateX(' + dx + 'px)';
+    v.style.opacity = String(1 - Math.min(Math.abs(dx) / 420, 0.45));
+  });
+  function end(e) {
+    if (!st || e.pointerId !== st.id) return;
+    var s = st; st = null;
+    if (!s.cap) return;
+    justDragged = true; setTimeout(function () { justDragged = false; }, 60);
+    if (Math.abs(s.dx) > 60) turn(s.dx < 0 ? 1 : -1);
+    else {
+      v.style.transition = 'transform .18s, opacity .18s'; v.style.transform = ''; v.style.opacity = '';
+      setTimeout(function () { v.style.transition = ''; }, 200);
+    }
+  }
+  v.addEventListener('pointerup', end); v.addEventListener('pointercancel', end);
+  v.addEventListener('click', function (e) { if (justDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
+  v.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft') { turn(-1); e.preventDefault(); }
+    if (e.key === 'ArrowRight') { turn(1); e.preventDefault(); }
+  });
+}
+
+/* ---------- entries ---------- */
+function renderEntries() {
+  var list = S.entries.slice().sort(function (a, b) { return T.parse(b.start) - T.parse(a.start); });
+  var h = '<h2>' + esc(t('entriesTitle')) + '</h2>';
+  if (!list.length) h += '<p class="muted">' + esc(t('entriesEmpty')) + '</p>';
+  else h += '<div class="elist">' + list.map(function (e) {
+    return '<button type="button" class="entry" data-edit="' + esc(e.id) + '">' + esc(fmtDT(T.parse(e.start)) + ' → ' + (e.end ? fmtDT(T.parse(e.end)) : t('fcNow'))) + '</button>';
+  }).join('') + '</div>';
+  $('#entries').innerHTML = h;
+}
+
+/* ---------- panel switching ---------- */
+function setPanel(name) {
+  panel = name;
+  $('#layout').setAttribute('data-panel', name);
+  $('#setting-btn').setAttribute('aria-pressed', name === 'settings');
+  var a = window.__tahara; if (a.renderPanel) a.renderPanel();
+}
+function renderAll() {
+  renderCal(); renderEntries();
+  var a = window.__tahara; if (a.renderPanel) a.renderPanel();
+  $('#add').setAttribute('aria-label', t('add')); $('#goto-today').setAttribute('aria-label', t('today'));
+  $('#setting-btn').setAttribute('aria-label', t('setT'));
+}
+function goToday() { var d = new Date(); view = { y: d.getFullYear(), m: d.getMonth() }; renderCal(); }
+function goTo(min) { var d = new Date(min * 60000); view = { y: d.getFullYear(), m: d.getMonth() }; renderCal(); }
+
+window.__tahara = { S: S, T: T, t: t, $: $, esc: esc, pad: pad, fmtDate: fmtDate, fmtTime: fmtTime, fmtDT: fmtDT, fmtShort: fmtShort, fmtDur: fmtDur, num1: num1, nowMin: nowMin, save: save, load: load, analysis: analysis, predicted: predicted, renderCal: renderCal, renderEntries: renderEntries, renderAll: renderAll, turn: turn, goToday: goToday, goTo: goTo, setPanel: setPanel, getPanel: function () { return panel; }, toast: toast, initSky: initSky, initSwipe: initSwipe, DEF_PRAY: DEF_PRAY, get storeOK() { return storeOK; } };
+})();
+(function () {
+'use strict';
+var A = window.__tahara, T = A.T, S = A.S, t = A.t, $ = A.$, esc = A.esc, D = T.D, pad = A.pad;
+var form = null, delArm = false, wipeArm = false;
+var DROP = '<svg class="drop" viewBox="0 0 20 28" aria-hidden="true"><path d="M10 0C10 0 0 11.5 0 18a10 10 0 0020 0C20 11.5 10 0 10 0z"/></svg>';
+
+function pn(fp) { return t(fp.n) + (fp.also ? ' + ' + t(fp.also) : ''); }
+function li(list) { return '<ul class="plain">' + list.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>'; }
+function head(title, dots) {
+  return '<div class="phead">' + (dots ? '<span class="dots" aria-hidden="true"><i></i><i></i></span>' : '<span></span>') + '<h2>' + title + '</h2></div>';
+}
+
+/* ---------- results ---------- */
+function reasonsFor(f, now) {
+  var r = [];
+  if (f.how === 'gap') r.push(t('rByGap'));
+  if (f.how === 'gapContinued') r.push(t('rByGapC', { start: A.fmtDT(f.s) }));
+  if (f.how === 'continued' || f.how === 'afterWindow') r.push(t('rNext', { start: A.fmtDT(f.s) }));
+  r.push(t('rFrame', { start: A.fmtDT(f.s), end: A.fmtDT(f.e) }));
+  if (f.afterIstih.length && f.afterIstih[0].s === f.e && f.haid.length && f.haid[f.haid.length - 1].e === f.e) r.push(t('rSwitch', { time: A.fmtDT(f.e) }));
+  if (f.hasGap) r.push(t('rGap'));
+  f.short.forEach(function (p) { r.push(t('rShort', { hours: A.num1((p.e - p.s) / 60) })); });
+  if (f.afterIstih.length) r.push(t('rIstih', { from: A.fmtDate(f.afterIstih[0].s), to: A.fmtDate(f.afterIstih[f.afterIstih.length - 1].e) }));
+  if (f.ongoing) {
+    var b = now < f.e ? f.e : (now < f.w ? f.w : null);
+    if (b) r.push(t('rOngoing', { date: A.fmtDT(b) }));
+  }
+  return r;
+}
+function actionsFor(f, now) {
+  var last = f.pieces[f.pieces.length - 1], blocks = '', acts = [];
+  f.haid.forEach(function (p) {
+    if (p.e > now || (f.ongoing && p === last)) return;
+    var fp = T.firstPrayer(p.e, S.pray), items = [t('aGhusl', { time: A.fmtDT(p.e) })];
+    if (fp) { items.push(t('aPray', { prayer: pn(fp), date: A.fmtDate(fp.start) })); if (fp.jam) items.push(t('aJam')); }
+    blocks += '<div class="stack"><p><b>' + esc(A.fmtDT(p.s) + ' → ' + A.fmtDT(p.e)) + '</b></p>' + li(items) + '</div>';
+  });
+  if (f.ongoing && last.type === 'haid') {
+    acts.push(t('aNowHaid'));
+    if (now < f.e) { var fp2 = T.firstPrayer(f.e, S.pray); if (fp2) acts.push(t('aEndsAt', { time: A.fmtDT(f.e), prayer: pn(fp2) })); }
+  }
+  if (f.haidMinutes > 0) acts.push(t('aFast', { d: Math.floor(f.haidMinutes / D), h: Math.round((f.haidMinutes % D) / 60) }));
+  if (f.istih.length) acts.push(t('aIstih'));
+  return blocks + (acts.length ? li(acts) : '');
+}
+function frameCard(f, now) {
+  var cls = 'haid', pill, hd, last = f.pieces[f.pieces.length - 1];
+  if (f.ongoing && last.type === 'istih') { cls = 'istih'; pill = 'stNowI'; hd = 'hNowI'; }
+  else if (f.ongoing) { pill = 'stNow'; hd = 'hNow'; }
+  else { pill = 'stHaid'; hd = f.afterIstih.length ? 'hHaidMore' : 'hHaid'; }
+  var h = '<div class="row"><span class="pill ' + cls + '">' + esc(t(pill)) + '</span><b>' + esc(t('cycle') + ' ' + A.fmtShort(f.s)) + '</b></div><h3 class="head">' + esc(t(hd)) + '</h3><div class="facts">';
+  f.haid.forEach(function (p) {
+    var open = f.ongoing && p === last;
+    h += '<div class="fact"><b>' + esc(t('fcHaid')) + '</b><span>' + esc(A.fmtDT(p.s)) + ' → ' + esc(open ? t('fcNow') : A.fmtDT(p.e)) + '</span></div>';
+  });
+  h += '<div class="fact"><b>' + esc(t('fcLen')) + '</b><span>' + esc(A.fmtDur(f.haidMinutes)) + '</span></div>';
+  if (f.afterIstih.length) {
+    var ls = f.afterIstih[f.afterIstih.length - 1];
+    h += '<div class="fact"><b>' + esc(t('fcIstih')) + '</b><span>' + esc(A.fmtDate(f.afterIstih[0].s) + ' → ' + (f.ongoing && ls === last ? t('fcNow') : A.fmtDate(ls.e))) + '</span></div>';
+  }
+  h += '<div class="fact"><b>' + esc(t('fcFrame')) + '</b><span>' + esc(A.fmtDT(f.e)) + '</span></div></div>';
+  h += '<div class="stack"><h3>' + esc(t('whyT')) + '</h3>' + li(reasonsFor(f, now)) + '</div>';
+  var a = actionsFor(f, now);
+  if (a) h += '<div class="stack"><h3>' + esc(t('doT')) + '</h3>' + a + '</div>';
+  return h;
+}
+function orphanCard(o) {
+  var hours = A.num1(o.total / 60);
+  return '<div class="row"><span class="pill">' + esc(t('stNot')) + '</span><b>' + esc(t('cycle') + ' ' + A.fmtShort(o.s)) + '</b></div><h3 class="head">' + esc(t('hNot')) + '</h3>' +
+    '<div class="facts"><div class="fact"><b>' + esc(t('fcIstih')) + '</b><span>' + esc(A.fmtDT(o.s) + ' → ' + A.fmtDT(o.e)) + '</span></div></div>' +
+    '<div class="stack"><h3>' + esc(t('whyT')) + '</h3>' + li([t('rOrphan', { hours: hours })]) + '</div>' +
+    '<div class="stack"><h3>' + esc(t('doT')) + '</h3>' + li([t('aNot'), t('aIstih')]) + '</div>';
+}
+function summaryText(res) {
+  var L = [t('sumHead'), '', t('sumEntries') + ':'];
+  S.entries.slice().sort(function (a, b) { return T.parse(a.start) - T.parse(b.start); }).forEach(function (e) {
+    L.push('- ' + A.fmtDT(T.parse(e.start)) + ' > ' + (e.end ? A.fmtDT(T.parse(e.end)) : t('fcNow')));
+  });
+  L.push('', t('sumResult') + ':');
+  res.frames.forEach(function (f) {
+    L.push('- ' + t('cycle') + ' ' + A.fmtDT(f.s) + ' (' + t('fcFrame') + ' ' + A.fmtDT(f.e) + ')');
+    f.haid.forEach(function (p) { L.push('    ' + t('fcHaid') + ': ' + A.fmtDT(p.s) + ' > ' + A.fmtDT(p.e)); });
+    f.short.forEach(function (p) { L.push('    ' + t('rShort', { hours: A.num1((p.e - p.s) / 60) })); });
+    f.afterIstih.forEach(function (p) { L.push('    ' + t('fcIstih') + ': ' + A.fmtDT(p.s) + ' > ' + A.fmtDT(p.e)); });
+  });
+  res.orphans.forEach(function (o) { L.push('- ' + t('hNot') + ': ' + A.fmtDT(o.s) + ' > ' + A.fmtDT(o.e)); });
+  return L.join('\n');
+}
+function resultHTML() {
+  var now = A.nowMin(), res = A.analysis(), h = '<div class="pcard">' + head(esc(t('resTitle')), true);
+  if (S.demo) h += '<div class="note row" style="justify-content:space-between"><span>' + esc(t('demoNote')) + '</span><button type="button" class="btn pinkb small" id="demo-clear">' + esc(t('demoClear')) + '</button></div>';
+  var items = [];
+  res.frames.forEach(function (f) { items.push({ s: f.s, f: f }); });
+  res.orphans.forEach(function (o) { items.push({ s: o.s, o: o }); });
+  items.sort(function (a, b) { return b.s - a.s; });
+  if (!items.length) {
+    return h + '<p class="muted">' + esc(t('resEmpty')) + '</p><p class="muted">' + esc(t('demoHint')) + '</p><div class="row"><button type="button" class="btn" id="demo-load">' + esc(t('demoBtn')) + '</button></div></div>';
+  }
+  function card(it) { return it.f ? frameCard(it.f, now) : orphanCard(it.o); }
+  h += '<div class="ep">' + card(items[0]) + '</div>';
+  var pr = A.predicted(res);
+  if (pr) h += '<p class="muted">' + esc(t('predT', { n: pr.n, date: A.fmtDate(pr.at) })) + '</p>';
+  if (items.length > 1) h += '<details><summary>' + esc(t('older')) + ' (' + (items.length - 1) + ')</summary><div class="stack">' + items.slice(1).map(function (it) { return '<div class="ep">' + card(it) + '</div>'; }).join('') + '</div></details>';
+  h += '<div class="row"><button type="button" class="btn pinkb small" id="copy-sum">' + esc(t('copy')) + '</button></div><div id="sumwrap"></div></div>';
+  return h;
+}
+
+/* ---------- settings ---------- */
+function settingsHTML() {
+  var h = '<div class="pframe pink"><div class="pcard">' + head('setting', true);
+  h += '<div class="stack"><h3>' + esc(t('langT')) + '</h3><div class="seg" role="group" aria-label="' + esc(t('langT')) + '">' +
+    '<button type="button" data-lang="th" aria-pressed="' + (S.lang === 'th') + '">ไทย</button><button type="button" data-lang="en" aria-pressed="' + (S.lang === 'en') + '">EN</button></div></div>';
+  h += '<details><summary>' + esc(t('prT')) + '</summary><div class="stack"><p class="muted">' + esc(t('prNote')) + '</p><div class="grid2">';
+  ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(function (k) {
+    h += '<div class="field"><label for="pt-' + k + '"><b>' + esc(t(k)) + '</b></label><input class="t" type="time" id="pt-' + k + '" data-pray="' + k + '" value="' + esc(S.pray[k]) + '"></div>';
+  });
+  h += '</div></div></details>';
+  h += '<details><summary>' + esc(t('bkT')) + '</summary><div class="stack"><div class="row"><button type="button" class="btn pinkb small" id="bk-copy">' + esc(t('bkCopy')) + '</button></div>' +
+    '<div class="field"><label for="bk-text"><b>' + esc(t('bkPaste')) + '</b></label><textarea id="bk-text" spellcheck="false"></textarea></div>' +
+    '<div class="row"><button type="button" class="btn small" id="bk-import">' + esc(t('bkImport')) + '</button>' +
+    '<button type="button" class="btn line small" id="wipe">' + esc(wipeArm ? t('wipeSure') : t('wipe')) + '</button></div></div></details>';
+  h += '<details><summary>' + esc(t('rulesT')) + '</summary>' + li(I18N[S.lang].rules) + '</details></div></div>';
+  return h;
+}
+
+/* ---------- form ---------- */
+function split(iso) { return iso ? [iso.slice(0, 10), iso.slice(11, 16)] : ['', '']; }
+function openForm(arg) {
+  delArm = false;
+  if (arg && typeof arg === 'object') { var s = split(arg.start), e = split(arg.end); form = { id: arg.id, sd: s[0], st: s[1], ed: e[0], et: e[1], ongoing: !arg.end }; }
+  else {
+    var n = T.iso(A.nowMin()).slice(0, 10);
+    form = { id: null, sd: arg || n, st: '08:00', ed: '', et: '08:00', ongoing: false };
+  }
+  A.setPanel('form');
+}
+function formHTML() {
+  var f = form;
+  function dt(idd, idt, d, tm, lab, dis) {
+    return '<div class="dt"><label>' + '<input type="date" id="' + idd + '" value="' + esc(d) + '" aria-label="' + esc(lab + ' ' + t('fDate')) + '"' + (dis ? ' disabled' : '') + '></label>' +
+      '<label><input type="time" id="' + idt + '" value="' + esc(tm) + '" aria-label="' + esc(lab + ' ' + t('fTime')) + '"' + (dis ? ' disabled' : '') + '></label></div>';
+  }
+  return '<div class="pframe mint"><div class="pcard ftop"><div class="phead"><span></span><h2>' + esc(t(f.id ? 'fEdit' : 'fNew')) + DROP + '</h2></div>' +
+    '<div class="tl"><div class="field"><span class="lab">start</span>' + dt('f-sd', 'f-st', f.sd, f.st, 'start', false) + '</div>' +
+    '<div class="field"><span class="lab">end</span>' + dt('f-ed', 'f-et', f.ed, f.et, 'end', f.ongoing) + '</div></div></div>' +
+    '<div class="pcard fbot"><label class="check" for="f-ongoing"><input type="checkbox" id="f-ongoing"' + (f.ongoing ? ' checked' : '') + '>' + esc(t('fOngoing')) + '</label>' +
+    '<p class="muted">' + esc(t('fHelp')) + '</p><p id="ferr" class="ferr" role="alert" hidden></p>' +
+    '<div class="row"><button type="button" class="btn" id="f-save">' + esc(t('save')) + '</button><button type="button" class="btn pinkb" id="f-cancel">' + esc(t('cancel')) + '</button>' +
+    (f.id ? '<button type="button" class="btn line small" id="f-del">' + esc(t('del')) + '</button>' : '') + '</div></div></div>';
+}
+function formErr(k) { var el = $('#ferr'); el.textContent = t(k); el.hidden = false; }
+function saveForm() {
+  var sd = $('#f-sd').value, st = $('#f-st').value, ed = $('#f-ed').value, et = $('#f-et').value, ong = $('#f-ongoing').checked;
+  var start = sd && st ? sd + 'T' + st : '', end = (!ong && ed && et) ? ed + 'T' + et : '';
+  var n = A.nowMin(), s = T.parse(start), e = ong ? null : T.parse(end);
+  if (isNaN(s)) return formErr('eStart');
+  if (s > n) return formErr('eFuture');
+  if (!ong) {
+    if (!end) return formErr('eEndMissing');
+    if (isNaN(e) || e <= s) return formErr('eEnd');
+    if (e > n) return formErr('eFuture');
+  }
+  var rec = { id: form.id || ('e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)), start: start, end: end };
+  var i = S.entries.findIndex(function (x) { return x.id === rec.id; });
+  if (i >= 0) S.entries[i] = rec; else S.entries.push(rec);
+  A.save(); form = null; A.setPanel('result'); A.renderAll(); A.toast(t('saved'));
+  A.goTo(s);
+  if (window.matchMedia('(max-width:899px)').matches) $('#panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* ---------- panel + footer ---------- */
+function renderPanel() {
+  var p = A.getPanel(), el = $('#panel');
+  if (p === 'settings') el.innerHTML = settingsHTML();
+  else if (p === 'form') el.innerHTML = formHTML();
+  else el.innerHTML = resultHTML();
+  $('#foot').innerHTML = '<p><b>' + esc(t('privT')) + '</b> ' + esc(t('priv')) + '</p>' + (A.storeOK ? '' : '<p>' + esc(t('noStore')) + '</p>') + '<p>' + esc(t('disc')) + '</p><p>' + esc(t('contactT')) + ': <a href="mailto:sisiramnth09@gmail.com">sisiramnth09@gmail.com</a></p>';
+}
+A.renderPanel = renderPanel;
+function applyLang() { document.documentElement.lang = S.lang; A.renderAll(); }
+
+function loadDemo() {
+  var d = new Date(), base = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 8, 0);
+  function iso(daysAgo) { var x = new Date(base.getTime() - daysAgo * 86400000); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()) + 'T' + pad(x.getHours()) + ':' + pad(x.getMinutes()); }
+  function e(i, s, en) { return { id: 'demo' + i, start: iso(s), end: en == null ? '' : iso(en) }; }
+  S.entries = [e(0, 45, 39), e(1, 20, 12), e(2, 9, 3)];
+  S.demo = true; A.save(); A.goTo(A.nowMin() - 20 * D); applyLang();
+}
+function copyText(txt) {
+  function fallback() {
+    A.toast(t('copyFail'));
+    var w = $('#sumwrap') || $('#panel'); var ta = document.createElement('textarea');
+    ta.value = txt; ta.readOnly = true; ta.setAttribute('aria-label', 'copy'); w.appendChild(ta); ta.focus(); ta.select();
+  }
+  try { navigator.clipboard.writeText(txt).then(function () { A.toast(t('copied')); }, fallback); } catch (e) { fallback(); }
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', function (ev) {
+  var el = ev.target.closest('button,[data-day]'); if (!el) return;
+  if (el.dataset.lang) { S.lang = el.dataset.lang; A.save(); applyLang(); return; }
+  if (el.dataset.nav) { A.turn(+el.dataset.nav); return; }
+  if (el.dataset.day) { openForm(el.dataset.day); return; }
+  if (el.dataset.edit) { var e = S.entries.find(function (x) { return x.id === el.dataset.edit; }); if (e) openForm(e); return; }
+  switch (el.id) {
+    case 'setting-btn': A.setPanel(A.getPanel() === 'settings' ? 'result' : 'settings'); break;
+    case 'add': openForm(); break;
+    case 'goto-today': A.goToday(); break;
+    case 'f-save': saveForm(); break;
+    case 'f-cancel': form = null; A.setPanel('result'); break;
+    case 'f-del':
+      if (!delArm) { delArm = true; el.textContent = t('delSure'); break; }
+      var id = form.id; S.entries = S.entries.filter(function (x) { return x.id !== id; });
+      A.save(); form = null; A.setPanel('result'); A.renderAll(); A.toast(t('deleted')); break;
+    case 'demo-load': loadDemo(); break;
+    case 'demo-clear': S.entries = []; S.demo = false; A.save(); A.renderAll(); break;
+    case 'copy-sum': copyText(summaryText(A.analysis())); break;
+    case 'bk-copy': copyText(JSON.stringify({ v: 2, pray: S.pray, entries: S.entries })); break;
+    case 'bk-import':
+      try {
+        var o = JSON.parse($('#bk-text').value);
+        if (!o || !Array.isArray(o.entries)) throw 0;
+        o.entries.forEach(function (x) { if (isNaN(T.parse(x.start))) throw 0; });
+        S.entries = o.entries.filter(function (x) { return x.kind !== 'nifas'; }).map(function (x) { return { id: String(x.id || 'i' + Math.random().toString(36).slice(2)), start: x.start, end: x.end || '' }; });
+        if (o.pray) S.pray = Object.assign(S.pray, o.pray);
+        S.demo = false; A.save(); A.renderAll(); A.toast(t('bkOk'));
+      } catch (e2) { A.toast(t('bkErr')); }
+      break;
+    case 'wipe':
+      if (!wipeArm) { wipeArm = true; el.textContent = t('wipeSure'); break; }
+      wipeArm = false; S.entries = []; S.demo = false; A.save(); A.renderAll(); A.toast(t('wiped')); break;
+  }
+});
+document.addEventListener('change', function (ev) {
+  var el = ev.target;
+  if (el.id === 'f-ongoing') { ['f-ed', 'f-et'].forEach(function (i) { $('#' + i).disabled = el.checked; }); return; }
+  if (el.dataset.pray) { if (el.value) { S.pray[el.dataset.pray] = el.value; A.save(); } return; }
+});
+document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && A.getPanel() !== 'result') { form = null; A.setPanel('result'); } });
+
+A.load(); A.initSky(); A.initSwipe(); applyLang();
+})();
+</script></body></html>
